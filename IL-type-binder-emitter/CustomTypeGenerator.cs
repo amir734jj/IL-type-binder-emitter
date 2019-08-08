@@ -35,7 +35,7 @@ namespace IL_type_binder_emitter
 
             var assemblyBuilder =
                 AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(assemblyName), AssemblyBuilderAccess.Run);
-            
+
             var moduleBuilder = assemblyBuilder.DefineDynamicModule("Module123");
 
             _tb = moduleBuilder.DefineType(typeSignature,
@@ -59,7 +59,7 @@ namespace IL_type_binder_emitter
                 new[] {_srcType});
 
             constructorBuilder.DefineParameter(0, ParameterAttributes.None, "entity");
-            
+
             var constructorIl = constructorBuilder.GetILGenerator();
             constructorIl.Emit(OpCodes.Ldarg_0);
             constructorIl.Emit(OpCodes.Ldarg_1);
@@ -78,7 +78,9 @@ namespace IL_type_binder_emitter
 
         private FieldBuilder EmitSourceField()
         {
-            var entityBldr = _tb.DefineField("_" + "entity", _srcType, FieldAttributes.Private);
+            var entityBldr = _tb.DefineField("_" + "entity", _srcType,
+                FieldAttributes.Private |
+                FieldAttributes.InitOnly);
 
             return entityBldr;
         }
@@ -86,7 +88,7 @@ namespace IL_type_binder_emitter
         private void EmitProperty(string cPn, Type cmPt, string sPn)
         {
             var srcProp = _srcType.GetProperty(sPn, BindingFlags.Public | BindingFlags.Instance);
-            
+
             var getterMethodInfo = srcProp.GetMethod ?? throw new Exception("Missing getter!");
             var getPropMthdBldr = _tb.DefineMethod($"get_{cPn}",
                 MethodAttributes.Public |
@@ -102,8 +104,7 @@ namespace IL_type_binder_emitter
             getIl.MarkLabel(getPropertyLbl);
             getIl.Emit(OpCodes.Ldarg_0);
             getIl.Emit(OpCodes.Ldfld, _entityFieldBldr);
-            getIl.Emit(OpCodes.Call, getterMethodInfo);
-            getIl.Emit(OpCodes.Dup);
+            getIl.Emit(OpCodes.Callvirt, getterMethodInfo);
             getIl.MarkLabel(exitGetLbl);
             getIl.Emit(OpCodes.Ret);
 
@@ -123,7 +124,7 @@ namespace IL_type_binder_emitter
             setIl.Emit(OpCodes.Ldarg_0);
             getIl.Emit(OpCodes.Ldfld, _entityFieldBldr);
             setIl.Emit(OpCodes.Ldarg_1);
-            getIl.Emit(OpCodes.Call, setterMethodInfo);
+            getIl.Emit(OpCodes.Callvirt, setterMethodInfo);
             setIl.Emit(OpCodes.Nop);
             setIl.MarkLabel(exitSetLbl);
             setIl.Emit(OpCodes.Ret);
