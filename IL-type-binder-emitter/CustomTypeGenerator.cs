@@ -33,13 +33,13 @@ namespace IL_type_binder_emitter
                 throw new Exception("Type has to be an interface");
             }
 
-            const string assemblyName = "DynamicAssembly123";
-            const string typeSignature = "DynamicType123";
+            var assemblyName = Guid.NewGuid().ToString();
+            var typeSignature =  Guid.NewGuid().ToString();
 
             var assemblyBuilder =
                 AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(assemblyName), AssemblyBuilderAccess.Run);
 
-            var moduleBuilder = assemblyBuilder.DefineDynamicModule("Module123");
+            var moduleBuilder = assemblyBuilder.DefineDynamicModule(Guid.NewGuid().ToString());
 
             _tb = moduleBuilder.DefineType(typeSignature,
                 TypeAttributes.Public |
@@ -138,7 +138,7 @@ namespace IL_type_binder_emitter
             _tb.DefineMethodOverride(getPropMthdBldr, overrideGetterPropMthdInfo);
             _tb.DefineMethodOverride(setPropMthdBldr, overrideSetterPropMthdInfo);
             
-            var propertyBldr = _tb.DefineProperty(cPn, PropertyAttributes.None, cmPt, null);
+            var propertyBldr = _tb.DefineProperty(cPn, PropertyAttributes.None, cmPt, Type.EmptyTypes);
             propertyBldr.SetGetMethod(getPropMthdBldr);
             propertyBldr.SetSetMethod(setPropMthdBldr);
         }
