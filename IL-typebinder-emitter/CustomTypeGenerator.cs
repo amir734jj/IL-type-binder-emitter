@@ -15,17 +15,20 @@ namespace IL_typebinder_emitter
         private readonly FieldBuilder _entityFieldBldr;
 
         private readonly Type _srcType;
+        
+        private readonly Type _cmType;
 
         /// <summary>
         /// Initialize custom type builder
         /// </summary>
         public CustomTypeGenerator(Dictionary<string, (Type Type, string SourcePrpName)> members)
         {
-            var objType = typeof(object);
-            var cmType = typeof(TCommon);
+            _cmType = typeof(TCommon);
             _srcType = typeof(TSource);
+            
+            var objType = typeof(object);
 
-            if (!cmType.IsInterface)
+            if (!_cmType.IsInterface)
             {
                 throw new Exception("Type has to be an interface");
             }
@@ -34,7 +37,8 @@ namespace IL_typebinder_emitter
             const string typeSignature = "DynamicType123";
 
             var assemblyBuilder =
-                AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(assemblyName), AssemblyBuilderAccess.Run);
+                AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(assemblyName), AssemblyBuilderAccess.RunAndCollect);
+            
             
             var moduleBuilder = assemblyBuilder.DefineDynamicModule("Module123");
 
@@ -45,7 +49,7 @@ namespace IL_typebinder_emitter
                 TypeAttributes.Sealed |
                 TypeAttributes.AutoLayout, objType);
 
-            _tb.AddInterfaceImplementation(cmType);
+            _tb.AddInterfaceImplementation(_cmType);
 
             _entityFieldBldr = EmitSourceField();
 
@@ -70,7 +74,7 @@ namespace IL_typebinder_emitter
             {
                 EmitProperty(commonPrpName, type, sourcePrpName);
             }
-
+            
             EmittedType = _tb.CreateType();
         }
 
@@ -86,7 +90,9 @@ namespace IL_typebinder_emitter
         private void EmitProperty(string cPn, Type cmPt, string sPn)
         {
             var srcProp = _srcType.GetProperty(sPn, BindingFlags.Public | BindingFlags.Instance);
-            
+            var overrideProp = _cmType.GetProperty(cPn, BindingFlags.Public | BindingFlags.Instance);
+
+            var overrideGetterPropMthdInfo = overrideProp.GetMethod ?? throw new Exception("Missing getter");
             var getterMethodInfo = srcProp.GetMethod ?? throw new Exception("Missing getter!");
             var getPropMthdBldr = _tb.DefineMethod($"get_{cPn}",
                 MethodAttributes.Public |
@@ -94,7 +100,7 @@ namespace IL_typebinder_emitter
                 MethodAttributes.SpecialName |
                 MethodAttributes.HideBySig,
                 cmPt, Type.EmptyTypes);
-
+            
             var getIl = getPropMthdBldr.GetILGenerator();
             var getPropertyLbl = getIl.DefineLabel();
             var exitGetLbl = getIl.DefineLabel();
@@ -107,6 +113,7 @@ namespace IL_typebinder_emitter
             getIl.MarkLabel(exitGetLbl);
             getIl.Emit(OpCodes.Ret);
 
+            var overrideSetterPropMthdInfo = overrideProp.SetMethod ?? throw new Exception("Missing setter");
             var setterMethodInfo = srcProp.SetMethod ?? throw new Exception("Missing setter!");
             var setPropMthdBldr = _tb.DefineMethod($"set_{cPn}",
                 MethodAttributes.Public |
@@ -114,7 +121,7 @@ namespace IL_typebinder_emitter
                 MethodAttributes.SpecialName |
                 MethodAttributes.HideBySig,
                 null, new[] {cmPt});
-
+         
             var setIl = setPropMthdBldr.GetILGenerator();
             var modifyPropertyLbl = setIl.DefineLabel();
             var exitSetLbl = setIl.DefineLabel();
@@ -128,6 +135,9 @@ namespace IL_typebinder_emitter
             setIl.MarkLabel(exitSetLbl);
             setIl.Emit(OpCodes.Ret);
 
+            _tb.DefineMethodOverride(getPropMthdBldr, overrideGetterPropMthdInfo);
+            _tb.DefineMethodOverride(setPropMthdBldr, overrideSetterPropMthdInfo);
+            
             var propertyBldr = _tb.DefineProperty(cPn, PropertyAttributes.None, cmPt, null);
             propertyBldr.SetGetMethod(getPropMthdBldr);
             propertyBldr.SetSetMethod(setPropMthdBldr);
