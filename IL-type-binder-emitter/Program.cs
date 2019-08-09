@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace IL_typebinder_emitter
+namespace IL_type_binder_emitter
 {
     public class Entity
     {
@@ -24,13 +24,20 @@ namespace IL_typebinder_emitter
 
             var type = new CustomTypeGenerator<Entity, ICommon>(table).EmittedType;
 
-            var entity = new Entity {Name = "Amir "};
+            var entity = new Entity {Name = "Amir"};
 
-            var rslt = (ICommon)Activator.CreateInstance(type, entity);
-            
-            Console.WriteLine(rslt.Name);
-            
-            Console.WriteLine("Hello World!");
+            var rslt = (ICommon) Activator.CreateInstance(type, entity);
+
+            try
+            {
+                Console.WriteLine(rslt.Name);
+
+                Console.WriteLine("Hello World!");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
         }
     }
 }

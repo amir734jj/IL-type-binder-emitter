@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IL-typebinder-emitter", "IL-typebinder-emitter\IL-typebinder-emitter.csproj", "{1B93E993-5ED1-41F5-84F0-899C15E9DF1A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IL-type-binder-emitter", "IL-type-binder-emitter\IL-type-binder-emitter.csproj", "{1B93E993-5ED1-41F5-84F0-899C15E9DF1A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
