@@ -121,7 +121,7 @@ namespace IL_type_binder_emitter
                 MethodAttributes.SpecialName |
                 MethodAttributes.HideBySig,
                 null, new[] {cmPt});
-         
+
             var setIl = setPropMthdBldr.GetILGenerator();
             var modifyPropertyLbl = setIl.DefineLabel();
             var exitSetLbl = setIl.DefineLabel();
@@ -137,7 +137,7 @@ namespace IL_type_binder_emitter
 
             _tb.DefineMethodOverride(getPropMthdBldr, overrideGetterPropMthdInfo);
             _tb.DefineMethodOverride(setPropMthdBldr, overrideSetterPropMthdInfo);
-            
+
             var propertyBldr = _tb.DefineProperty(cPn, PropertyAttributes.None, cmPt, Type.EmptyTypes);
             propertyBldr.SetGetMethod(getPropMthdBldr);
             propertyBldr.SetSetMethod(setPropMthdBldr);
