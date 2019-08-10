@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Xunit;
 
 namespace IL_type_binder_emitter
 {
@@ -28,16 +29,11 @@ namespace IL_type_binder_emitter
 
             var rslt = (ICommon) Activator.CreateInstance(type, entity);
 
-            try
-            {
-                Console.WriteLine(rslt.Name);
+            Assert.Equal(rslt.Name, "Amir");
 
-                Console.WriteLine("Hello World!");
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-            }
+            rslt.Name = "Taha";
+
+            Assert.Equal(rslt.Name, "Taha");
         }
     }
 }

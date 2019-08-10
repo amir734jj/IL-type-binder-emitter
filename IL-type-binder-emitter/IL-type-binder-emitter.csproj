@@ -7,4 +7,8 @@
         <AssemblyName>IL-type_binder-emitter</AssemblyName>
     </PropertyGroup>
 
+    <ItemGroup>
+      <PackageReference Include="xunit.assert" Version="2.4.1" />
+    </ItemGroup>
+
 </Project>

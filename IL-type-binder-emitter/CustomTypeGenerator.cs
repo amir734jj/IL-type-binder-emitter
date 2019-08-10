@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using System.Reflection.Emit;
 
@@ -15,7 +16,7 @@ namespace IL_type_binder_emitter
         private readonly FieldBuilder _entityFieldBldr;
 
         private readonly Type _srcType;
-        
+
         private readonly Type _cmType;
 
         /// <summary>
@@ -25,7 +26,7 @@ namespace IL_type_binder_emitter
         {
             _cmType = typeof(TCommon);
             _srcType = typeof(TSource);
-            
+
             var objType = typeof(object);
 
             if (!_cmType.IsInterface)
@@ -33,13 +34,13 @@ namespace IL_type_binder_emitter
                 throw new Exception("Type has to be an interface");
             }
 
-            var assemblyName = Guid.NewGuid().ToString();
-            var typeSignature =  Guid.NewGuid().ToString();
+            var assemblyName = Path.GetRandomFileName();
+            var typeSignature = Path.GetRandomFileName();
 
             var assemblyBuilder =
                 AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(assemblyName), AssemblyBuilderAccess.Run);
 
-            var moduleBuilder = assemblyBuilder.DefineDynamicModule(Guid.NewGuid().ToString());
+            var moduleBuilder = assemblyBuilder.DefineDynamicModule(Path.GetRandomFileName());
 
             _tb = moduleBuilder.DefineType(typeSignature,
                 TypeAttributes.Public |
@@ -73,7 +74,7 @@ namespace IL_type_binder_emitter
             {
                 EmitProperty(commonPrpName, type, sourcePrpName);
             }
-            
+
             EmittedType = _tb.CreateType();
         }
 
@@ -90,57 +91,84 @@ namespace IL_type_binder_emitter
 
         private void EmitProperty(string cPn, Type cmPt, string sPn)
         {
+            var propertyBldr = _tb.DefineProperty(cPn, PropertyAttributes.None, cmPt, Type.EmptyTypes);
+
             var srcProp = _srcType.GetProperty(sPn, BindingFlags.Public | BindingFlags.Instance);
             var overrideProp = _cmType.GetProperty(cPn, BindingFlags.Public | BindingFlags.Instance);
-            
-            var overrideGetterPropMthdInfo = overrideProp.GetMethod ?? throw new Exception("Missing getter");
-            var getterMethodInfo = srcProp.GetMethod ?? throw new Exception("Missing getter!");
-            var getPropMthdBldr = _tb.DefineMethod($"get_{cPn}",
-                MethodAttributes.Public |
-                MethodAttributes.Virtual |
-                MethodAttributes.SpecialName |
-                MethodAttributes.HideBySig,
-                cmPt, Type.EmptyTypes);
-            
-            var getIl = getPropMthdBldr.GetILGenerator();
-            var getPropertyLbl = getIl.DefineLabel();
-            var exitGetLbl = getIl.DefineLabel();
 
-            getIl.MarkLabel(getPropertyLbl);
-            getIl.Emit(OpCodes.Ldarg_0);
-            getIl.Emit(OpCodes.Ldfld, _entityFieldBldr);
-            getIl.Emit(OpCodes.Callvirt, getterMethodInfo);
-            getIl.MarkLabel(exitGetLbl);
-            getIl.Emit(OpCodes.Ret);
+            var overrideGetterPropMthdInfo = overrideProp.GetGetMethod();
+            var getterMethodInfo = srcProp.GetGetMethod();
 
-            var overrideSetterPropMthdInfo = overrideProp.SetMethod ?? throw new Exception("Missing setter");
-            var setterMethodInfo = srcProp.SetMethod ?? throw new Exception("Missing setter!");
-            var setPropMthdBldr = _tb.DefineMethod($"set_{cPn}",
-                MethodAttributes.Public |
-                MethodAttributes.Virtual |
-                MethodAttributes.SpecialName |
-                MethodAttributes.HideBySig,
-                null, new[] {cmPt});
+            if (overrideGetterPropMthdInfo != null && getterMethodInfo != null)
+            {
+                var getPropMthdBldr = _tb.DefineMethod($"get_{cPn}",
+                    MethodAttributes.Public |
+                    MethodAttributes.Virtual |
+                    MethodAttributes.SpecialName |
+                    MethodAttributes.HideBySig,
+                    cmPt, Type.EmptyTypes);
 
-            var setIl = setPropMthdBldr.GetILGenerator();
-            var modifyPropertyLbl = setIl.DefineLabel();
-            var exitSetLbl = setIl.DefineLabel();
+                var getIl = getPropMthdBldr.GetILGenerator();
+                var getPropertyLbl = getIl.DefineLabel();
+                var exitGetLbl = getIl.DefineLabel();
 
-            setIl.MarkLabel(modifyPropertyLbl);
-            setIl.Emit(OpCodes.Ldarg_0);
-            getIl.Emit(OpCodes.Ldfld, _entityFieldBldr);
-            setIl.Emit(OpCodes.Ldarg_1);
-            getIl.Emit(OpCodes.Callvirt, setterMethodInfo);
-            setIl.Emit(OpCodes.Nop);
-            setIl.MarkLabel(exitSetLbl);
-            setIl.Emit(OpCodes.Ret);
+                getIl.MarkLabel(getPropertyLbl);
+                getIl.Emit(OpCodes.Ldarg_0);
+                getIl.Emit(OpCodes.Ldfld, _entityFieldBldr);
+                getIl.Emit(OpCodes.Callvirt, getterMethodInfo);
+                getIl.MarkLabel(exitGetLbl);
+                getIl.Emit(OpCodes.Ret);
 
-            _tb.DefineMethodOverride(getPropMthdBldr, overrideGetterPropMthdInfo);
-            _tb.DefineMethodOverride(setPropMthdBldr, overrideSetterPropMthdInfo);
+                _tb.DefineMethodOverride(getPropMthdBldr, overrideGetterPropMthdInfo);
 
-            var propertyBldr = _tb.DefineProperty(cPn, PropertyAttributes.None, cmPt, Type.EmptyTypes);
-            propertyBldr.SetGetMethod(getPropMthdBldr);
-            propertyBldr.SetSetMethod(setPropMthdBldr);
+                propertyBldr.SetGetMethod(getPropMthdBldr);
+            }
+            else if (overrideGetterPropMthdInfo == null && getterMethodInfo == null)
+            {
+                // Do not generate getter method
+            }
+            else
+            {
+                throw new Exception("Missing getter");
+            }
+
+
+            var overrideSetterPropMthdInfo = overrideProp.GetSetMethod();
+            var setterMethodInfo = srcProp.GetSetMethod();
+
+            if (overrideSetterPropMthdInfo != null && setterMethodInfo != null)
+            {
+                var setPropMthdBldr = _tb.DefineMethod($"set_{cPn}",
+                    MethodAttributes.Public |
+                    MethodAttributes.Virtual |
+                    MethodAttributes.SpecialName |
+                    MethodAttributes.HideBySig,
+                    null, new[] {cmPt});
+
+                var setIl = setPropMthdBldr.GetILGenerator();
+                var modifyPropertyLbl = setIl.DefineLabel();
+                var exitSetLbl = setIl.DefineLabel();
+
+                setIl.MarkLabel(modifyPropertyLbl);
+                setIl.Emit(OpCodes.Ldarg_0);
+                setIl.Emit(OpCodes.Ldfld, _entityFieldBldr);
+                setIl.Emit(OpCodes.Ldarg_1);
+                setIl.Emit(OpCodes.Callvirt, setterMethodInfo);
+                setIl.MarkLabel(exitSetLbl);
+                setIl.Emit(OpCodes.Ret);
+
+                _tb.DefineMethodOverride(setPropMthdBldr, overrideSetterPropMthdInfo);
+
+                propertyBldr.SetSetMethod(setPropMthdBldr);
+            }
+            else if (overrideSetterPropMthdInfo == null && setterMethodInfo == null)
+            {
+                // Do not generate setter method
+            }
+            else
+            {
+                throw new Exception("Missing setter");
+            }
         }
     }
 }
