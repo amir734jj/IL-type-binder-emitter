@@ -132,7 +132,6 @@ namespace IL_type_binder_emitter
                 throw new Exception("Missing getter");
             }
 
-
             var overrideSetterPropMthdInfo = overrideProp.GetSetMethod();
             var setterMethodInfo = srcProp.GetSetMethod();
 
